@@ -30,7 +30,7 @@ AppBase::AppBase(int winWidth, int winHeight, const char* title, bool vsync)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef WIN32
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 #else //__APPLE__
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1); // mac support 4.1
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);

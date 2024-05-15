@@ -197,6 +197,8 @@ list(FILTER main_files EXCLUDE REGEX "${main_dir}/assets/images/*")
 list(FILTER main_files EXCLUDE REGEX "${main_dir}/ignored/*")
 list(FILTER main_files EXCLUDE REGEX "${main_dir}/exports/*")
 add_executable(${exe_name} ${main_files})
+set_target_properties(${exe_name} PROPERTIES 
+    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
 source_group(TREE ${main_dir} FILES ${main_files})
 target_include_directories(${exe_name} PRIVATE ${main_dir})
 target_link_libraries(${exe_name} PRIVATE limbrary)
