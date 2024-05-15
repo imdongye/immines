@@ -1,0 +1,33 @@
+# cmake
+[Bb]uild*/ 
+
+# Visual Studio
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+
+# Mac
+.DS_Store
+
+# assets
+!main/assets/
+main/assets/*
+!main/assets/shaders/
+!main/assets/imgui.ini
+
+# etc
+*ignored/
+*private/
+*todo/
+*result/
+main/exports/
+
+.$diagram.drawio.bkp
+
+
+# main/imgui.ini
+
+main/app_pref.json
+
+
+main/im_shadertoy/temp/temp.fs
