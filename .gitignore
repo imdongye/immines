@@ -10,10 +10,10 @@
 .DS_Store
 
 # assets
-!main/assets/
-main/assets/*
-!main/assets/shaders/
-!main/assets/imgui.ini
+# !main/assets/
+# main/assets/*
+# !main/assets/shaders/
+# !main/assets/imgui.ini
 
 # etc
 *ignored/

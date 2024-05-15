@@ -197,8 +197,10 @@ list(FILTER main_files EXCLUDE REGEX "${main_dir}/assets/images/*")
 list(FILTER main_files EXCLUDE REGEX "${main_dir}/ignored/*")
 list(FILTER main_files EXCLUDE REGEX "${main_dir}/exports/*")
 add_executable(${exe_name} ${main_files})
-set_target_properties(${exe_name} PROPERTIES 
-    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
+if(WIN32)
+    set_target_properties(${exe_name} PROPERTIES 
+        LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
+endif(WIN32)
 source_group(TREE ${main_dir} FILES ${main_files})
 target_include_directories(${exe_name} PRIVATE ${main_dir})
 target_link_libraries(${exe_name} PRIVATE limbrary)
@@ -256,8 +258,5 @@ endif()
 
 
 ### CPack ###
-# include(InstallRequiredSystemLibraries)
-# set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/License.txt")
-# set(CPACK_PACKAGE_VERSION_MAJOR 0)
-# set(CPACK_PACKAGE_VERSION_MAJOR 2)
-# include(CPack)
+include(InstallRequiredSystemLibraries)
+include(CPack)
