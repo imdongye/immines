@@ -22,6 +22,7 @@ cmake_minimum_required(VERSION 3.24...3.27 FATAL_ERROR)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLIM_DEBUG")
 
 set(CMAKE_VERBOSE_MAKEFILE true)
 if(WIN32)
@@ -258,5 +259,10 @@ endif()
 
 
 ### CPack ###
-include(InstallRequiredSystemLibraries)
+# From: https://cmake.org/cmake/help/book/mastering-cmake/chapter/Packaging%20With%20CPack.html
+install(TARGETS ${exe_name} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+# set (CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/main/assets/icon.ico")
+# set (CPACK_NSIS_MUI_ICON "@CMake_SOURCE_DIR@/main/assets/icon.ico")
+set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
+set (CPACK_CREATE_DESKTOP_LINKS asdf)
 include(CPack)

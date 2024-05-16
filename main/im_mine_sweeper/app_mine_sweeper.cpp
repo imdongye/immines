@@ -11,6 +11,7 @@
 #include <imgui.h>
 #include <glm/gtc/random.hpp>
 #include <functional>
+#include <set>
 
 
 using namespace glm;
@@ -47,11 +48,11 @@ namespace {
 		bool isOutside(int x, int y);
 		void clear();
 		void plantMines(int avoidX, int avoidY);
-		bool dig(int x, int y); // return true if OVER(is mine or all clear)
+		void dig(int x, int y); // return true if OVER(is mine or all clear)
 		void switchFlag(int x, int y);
 
-		bool compute1();
-		bool compute2();
+		void compute1();
+		void compute2();
 		void invokeNbrs(int x, int y, std::function<void(Cell&)> invoke);
 		void invokeAll(std::function<void(Cell&)> invoke);
 	};
@@ -133,10 +134,10 @@ void Board::switchFlag(int x, int y) {
 	cell.is_flaged = !cell.is_flaged;
 	nr_flagged += cell.is_flaged ? 1 : -1;
 }
-bool Board::dig(int x, int y) {
+void Board::dig(int x, int y) {
 	Cell& cell = cells[y][x];
 	if( isOutside(x, y) || cell.is_open )
-		return false;
+		return;
 	cell.is_open = true;
 	nr_closed--;
 	if( cell.is_flaged ) 
@@ -147,10 +148,10 @@ bool Board::dig(int x, int y) {
 			dig(c.x, c.y);
 		});
 	}
-	return cell.is_mine||nr_closed==nr_mine;
+	if( cell.is_mine||nr_closed==nr_mine )
+		game_state = GameState::OVER;
+	
 }
-
-
 
 //
 //	검증
@@ -165,8 +166,7 @@ bool Board::dig(int x, int y) {
 	compute2: 열린칸에서 주변 모르는칸에 확률(남은지뢰개수/모르는칸개수)을 더해서 높은것 지뢰로 선택
 	compute3: Todo: 확률로 칸열기
 */
-bool Board::compute1() {
-	bool isOver = false;
+void Board::compute1() {
 	invokeAll([&](Cell& c) {
 		if( !c.is_open ) {
 			return;
@@ -182,28 +182,22 @@ bool Board::compute1() {
 		});
 		if( c.nr_nbrs == nrFlags ) {
 			for( int i=0; i<nrUnknowns; i++ ) {
-				isOver |= dig(unknownNbrs[i]->x, unknownNbrs[i]->y);
+				dig(unknownNbrs[i]->x, unknownNbrs[i]->y);
 			}
 		}
-		if( c.nr_nbrs == nrFlags + nrUnknowns ) {
+		if( c.nr_nbrs-nrFlags == nrUnknowns ) {
 			for( int i=0; i<nrUnknowns; i++ ) {
 				switchFlag(unknownNbrs[i]->x, unknownNbrs[i]->y);
 			}
 		}
 	});
-	return isOver;
 }
-bool Board::compute2() {
-	bool isOver = false;
-	int nrUnknowns = 0;
-	Cell* unknowns[MAX_BOARD_SIZE*MAX_BOARD_SIZE];
+void Board::compute2() {
 	Cell *maxCell, *minCell;
+	std::set<Cell*> unknowns;
 
 	invokeAll([&](Cell& c) {
-		if( !c.is_open && !c.is_flaged) {
-			c.prob = 0.f;
-			unknowns[nrUnknowns++] = &c;
-		}
+		c.prob = 0.f;
 	});
 
 	invokeAll([&](Cell& c) {
@@ -221,22 +215,32 @@ bool Board::compute2() {
 		});
 		for( int i=0; i<nrUnknownNbrs; i++ ) {
 			unknownNbrs[i]->prob += (c.nr_nbrs-nrFlags) / float(nrUnknownNbrs);
+			unknowns.insert(unknownNbrs[i]);
 		}
 	});
 	
-	maxCell = minCell = unknowns[0];
-
-	for( int i=1; i<nrUnknowns; i++ ) {
-		Cell* curCell = unknowns[i];
+	maxCell = minCell = *unknowns.begin();
+	
+	for( Cell* curCell : unknowns ) {
+		log::pure("%f\n", curCell->prob);
 		if( maxCell->prob < curCell->prob ) {
 			maxCell = curCell;
-		} else if( minCell->prob > curCell->prob ) {
+		} 
+		else if( minCell->prob > curCell->prob ) {
 			minCell = curCell;
 		}
 	}
-	switchFlag(maxCell->x, maxCell->y);
-	// isOver = dig(minCell->x, minCell->y);
-	return isOver;
+	log::pure("max: %f\n", maxCell->prob);
+	log::pure("min: %f\n\n", minCell->prob);
+
+	const float averageMedian = 0.955f; // 테스트로 얻은 표본에서의 중간값 평균
+	if( maxCell->prob - averageMedian > averageMedian - minCell->prob ) {
+		switchFlag(maxCell->x, maxCell->y);
+	}
+	else {
+		dig(minCell->x, minCell->y);
+	}
+
 }
 
 
@@ -257,8 +261,6 @@ static void setNewGame() {
 AppMineSweeper::AppMineSweeper() 
 	: AppBase(NINE_BOARD_WINDOW_SIZE, NINE_BOARD_WINDOW_SIZE+TOP_WINDOW_HEIGHT, APP_NAME)
 {
-	setNewGame();
-
 	ImGuiIO& io = ImGui::GetIO();
 	const char* fontPath = "assets/fonts/SpoqaHanSansNeo-Medium.ttf";
 	const char* iconPath = "assets/fonts/fontello.ttf";
@@ -267,14 +269,15 @@ AppMineSweeper::AppMineSweeper()
 	ImFontConfig config;
     // config.GlyphMinAdvanceX = 13.0f;
 	config.MergeMode = true;
-    static ImWchar lIconRanges[] = { 0xE800, 0xE810, 0 };
+	static ImWchar lIconRanges[] = { 0xE800, 0xE810, 0 };
 
 	io.Fonts->AddFontFromFileTTF(fontPath, UI_FONT_SIZE, nullptr, io.Fonts->GetGlyphRangesKorean());
 	ui_font = io.Fonts->AddFontFromFileTTF(iconPath, UI_FONT_SIZE, &config, lIconRanges);
 
 	io.Fonts->AddFontFromFileTTF(fontPath, CELL_FONT_SIZE);
-    cell_font = io.Fonts->AddFontFromFileTTF(iconPath, CELL_FONT_SIZE, &config, lIconRanges);
+	cell_font = io.Fonts->AddFontFromFileTTF(iconPath, CELL_FONT_SIZE, &config, lIconRanges);
 
+	setNewGame();
 }
 AppMineSweeper::~AppMineSweeper()
 {
@@ -289,16 +292,17 @@ void AppMineSweeper::update()
 void AppMineSweeper::updateImGui()
 {
 	ImGui::DockSpaceOverViewport();
-	//log::drawViewer("logger##mine");
-
+#ifdef LIM_DEBUG 
+	log::drawViewer("logger##mine");
+#endif
 	//
 	//	Board
 	//
-	const int COL_CELL_IDX = 0;
-	const int COL_MINE_IDX = 9;
-	const int COL_FLAG_RIGHT_IDX = 10;
-	const int COL_FLAG_WRONG_IDX = 11;
-	static ImColor boardColors[12] = {
+	static const int COL_CELL_IDX = 0;
+	static const int COL_MINE_IDX = 9;
+	static const int COL_FLAG_RIGHT_IDX = 10;
+	static const int COL_FLAG_WRONG_IDX = 11;
+	static const ImColor boardColors[12] = {
 		ImColor::HSV(1.00f,0.00f,0.5f, 0.8f),// 0. cell 
 		ImColor::HSV(0.67f,0.85f,1.f), // 1. blue
 		ImColor::HSV(0.41f,0.85f,1.f), // 2. green
@@ -314,10 +318,9 @@ void AppMineSweeper::updateImGui()
 
 	};
 
-	ImGui::SetNextWindowSize({600.f, 600.f}, ImGuiCond_Once);
-	ImGui::PushItemWidth(-ImGui::GetFontSize() * 15);
+	ImGui::SetNextWindowSize({NINE_BOARD_WINDOW_SIZE, NINE_BOARD_WINDOW_SIZE}, ImGuiCond_Once);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{4, 4});
-	ImGui::Begin("board");
+	ImGui::Begin("board##mine");
 	const bool isBoardHovered = ImGui::IsWindowHovered();
 	const float paddingRadio = 0.06f;
 	const vec2 contentSize = toGlm(ImGui::GetContentRegionAvail());
@@ -337,7 +340,7 @@ void AppMineSweeper::updateImGui()
 	ImDrawList* drawList = ImGui::GetWindowDrawList();
 	board.invokeAll([&](Cell& cell) {
 		bool isHovered = hoveredX==cell.x && hoveredY==cell.y;
-		ImVec2 tlPos = toIG(screenPos + cellPadding + vec2(cell.x, cell.y)*cellRegion);
+		ImVec2 tlPos = toIG(screenPos + cellPadding + vec2{cell.x, cell.y}*cellRegion);
 		ImVec2 brPos = {tlPos.x+cellSize.x, tlPos.y+cellSize.y};
 		ImColor col = boardColors[COL_CELL_IDX];
 
@@ -391,9 +394,26 @@ void AppMineSweeper::updateImGui()
 		txPos.x -= fontSize*0.23f;
 		txPos.y -= fontSize*0.45f;
 		drawList->AddText(cell_font, fontSize, txPos, col, txPtr);
-	});
+	}); // end invokeAll
 	ImGui::End();
 	ImGui::PopStyleVar();
+
+	//
+	//	Board Input
+	//
+	if( game_state!=GameState::OVER && isBoardHovered && !board.isOutside(hoveredX, hoveredY)) {
+		if( ImGui::IsMouseReleased(0) ) {
+			if( game_state == GameState::NEW ) {
+				game_state = GameState::PLAYING;
+				start_time = ImGui::GetTime();
+				board.plantMines(hoveredX, hoveredY);
+			}
+			board.dig(hoveredX, hoveredY);
+		} else if( ImGui::IsMouseReleased(1) ) {
+			board.switchFlag(hoveredX, hoveredY);
+		}
+	}
+	
 
 
 
@@ -401,17 +421,18 @@ void AppMineSweeper::updateImGui()
 	//	State
 	//
 	if( game_state != GameState::NEW ) {
-		ImGui::Begin("state", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::Begin("state##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 
 		if( game_state == GameState::PLAYING ) {
 			elapsed_time = ImGui::GetTime() - start_time;
 		}
 		int eSec = (int)elapsed_time;
+		ImGui::AlignTextToFramePadding();
 		if( game_state==GameState::OVER ) {
 			ImGui::Text(( board.nr_closed == board.nr_mine )?u8"클리어!":u8"게임오버");
+			ImGui::SameLine(0.f,20.f);
 		}
-		ImGui::AlignTextToFramePadding();
 		ImGui::Text(u8"\uE803 %d:%02d", eSec/60, eSec%60);
 		ImGui::SetItemTooltip("%.3f sec", elapsed_time);
 
@@ -426,18 +447,14 @@ void AppMineSweeper::updateImGui()
 			if( game_state == GameState::PLAYING ) {
 				ImGui::SameLine();
 				if( ImGui::Button("자동1") ) {
-					if( board.compute1() ) {
-						game_state = GameState::OVER;
-					}
+					board.compute1();
 				}
 				ImGui::SameLine();
 				if( ImGui::Button("자동2") ) {
-					if( board.compute2() ) {
-						game_state = GameState::OVER;
-					}
+					board.compute2();
 				}
-			}
-		} 
+			} 
+		}
 		ImGui::PopFont();
 		ImGui::End();
 	}
@@ -451,7 +468,7 @@ void AppMineSweeper::updateImGui()
 	static int level = 0;
 	static bool isAdjChanged = false;
 	if( game_state == GameState::NEW ) {
-		ImGui::Begin("settings", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::Begin("settings##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 		ImGui::SetNextItemWidth(100.f);
 		if( ImGui::Combo("level", &level, levelStrs, 4) ) {
@@ -482,6 +499,19 @@ void AppMineSweeper::updateImGui()
 		}
 		ImGui::SameLine(0.f, 20.f);
 		ImGui::Text("%d in ( %d x %d )", adj.nr_mine, adj.width, adj.height);
+		if( ImGui::BeginItemTooltip() ) {
+			ImGui::Text("%d%%", int(adj.nr_mine/float(adj.width*adj.height)*100));
+			ImGui::EndTooltip();
+		}
+
+		ImGui::SameLine(0.f, 20.f);
+		ImGui::TextDisabled("(?)");
+		if( ImGui::BeginItemTooltip() ) {
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 50.0f);
+			ImGui::TextUnformatted("좌클릭: 열기, 우클릭: 깃발. 하나 열어서 시작.");
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
 
 		static const float minMineRatio = 0.12f;
 		static const float maxMineRatio = 0.25f;
@@ -506,25 +536,5 @@ void AppMineSweeper::updateImGui()
 		}
 		ImGui::PopFont();
 		ImGui::End();
-	}
-	
-
-	//
-	//	Input
-	//
-	if( game_state==GameState::OVER || !isBoardHovered || board.isOutside(hoveredX, hoveredY)) {
-		return;
-	}
-	if( ImGui::IsMouseReleased(0) ) {
-		if( game_state == GameState::NEW ) {
-			game_state = GameState::PLAYING;
-			start_time = ImGui::GetTime();
-			board.plantMines(hoveredX, hoveredY);
-		}
-		if( board.dig(hoveredX, hoveredY) ) {
-			game_state = GameState::OVER;
-		}
-	} else if( ImGui::IsMouseReleased(1) ) {
-		board.switchFlag(hoveredX, hoveredY);
 	}
 }
