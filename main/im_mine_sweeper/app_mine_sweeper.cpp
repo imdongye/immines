@@ -498,7 +498,7 @@ void AppMineSweeper::updateImGui()
 		ImGui::Begin("settings##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 		ImGui::SetNextItemWidth(100.f);
-		if( ImGui::Combo("level", &level, levelStrs, 4) ) {
+		if( ImGui::Combo("Level", &level, levelStrs, 4) ) {
 			isAdjChanged = true;
 			switch( level ) {
 			case 0:
@@ -530,11 +530,11 @@ void AppMineSweeper::updateImGui()
 
 		ImGui::SameLine(0.f, 20.f);
 		ImGui::TextDisabled("(?)");
-		if( ImGui::BeginItemTooltip() ) {
-			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 50.0f);
-			ImGui::TextUnformatted("좌클릭: 열기, 우클릭: 깃발. 하나 열어서 시작.");
-			ImGui::PopTextWrapPos();
-			ImGui::EndTooltip();
+		ImGui::SetItemTooltip("좌클릭: 열기, 우클릭: 깃발.\n하나 열어서 시작.");
+		if(level>1) {
+			ImGui::SameLine(0.f, 20.f);
+			ImGui::TextDisabled("플레이해 주셔서 감사합니다.");
+			ImGui::SetItemTooltip("프로그래머: 임동예 ( imdongye@naver.com )");
 		}
 
 		static const float minMineRatio = 0.12f;

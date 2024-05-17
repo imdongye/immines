@@ -262,22 +262,25 @@ endif()
 # From: https://cmake.org/cmake/help/book/mastering-cmake/chapter/Packaging%20With%20CPack.html
 install(TARGETS ${exe_name} DESTINATION .)
 install(DIRECTORY ${main_dir}/assets/ DESTINATION ./assets) #FILES_MATCHING PATTERN "*.dae"  PATTERN "*.jpg")
-install(FILES ${main_dir}/imgui.ini DESTINATION ./assets) #FILES_MATCHING PATTERN "*.dae"  PATTERN "*.jpg")
+install(FILES ${main_dir}/imgui.ini DESTINATION ./) #FILES_MATCHING PATTERN "*.dae"  PATTERN "*.jpg")
 set(CPACK_NSIS_DISPLAY_NAME "immines")
 set(CPACK_NSIS_PACKAGE_NAME "immines")
 set(CPACK_NSIS_MODIFY_PATH ON)
 set(CPACK_NSIS_MANIFEST_DPI_AWARE true)
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL YES)
+set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/imdongye/immines")
+set(CPACK_NSIS_HELP_LINK "http://imdongye.duckdns.org/")
+set(CPACK_NSIS_CONTACT "imdongye@naver.com")
 
 set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
 set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
+# From: https://stackoverflow.com/questions/2640760/creating-windows-desktop-icon-in-cmake-cpack-nsis
+list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$DESKTOP\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
+list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$DESKTOP\\\\${CMAKE_PROJECT_NAME}.lnk'")
 
-set(CPACK_NSIS_CREATE_ICONS_EXTRA
-  "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\${CMAKE_PROJECT_NAME}.lnk' '$INSTDIR\\\\immines.exe'")
-set(CPACK_NSIS_DELETE_ICONS_EXTRA
-  "Delete '$SMPROGRAMS\\\\$START_MENU\\\\${CMAKE_PROJECT_NAME}.lnk'")
-
+list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
+list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\${CMAKE_PROJECT_NAME}.lnk'")
 
 include(CPack)
