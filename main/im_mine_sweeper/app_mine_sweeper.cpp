@@ -144,11 +144,11 @@ void Board::dig(int x, int y) {
 	Cell& cell = cells[y][x];
 	if( isOutside(x, y) || cell.is_open )
 		return;
+	if( cell.is_flaged ) 
+		switchFlag(x,y);
 	cell.is_open = true;
 	nr_closed--;
 	nr_remain_view = glm::min(board.nr_closed, board.nr_mine-board.nr_flagged);
-	if( cell.is_flaged ) 
-		switchFlag(x,y);
 
 	if( cell.nr_nbrs==0 && !cell.is_mine ) {
 		invokeNbrs(x,y,[&](Cell& c){
