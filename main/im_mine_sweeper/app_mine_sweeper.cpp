@@ -24,7 +24,7 @@ namespace {
 	constexpr float UI_FONT_SIZE = 20.f;
 	constexpr float CELL_FONT_SIZE = 30.f;
 		
-	enum class GameState{
+	enum class UiState{
 		NEW,
 		PLAYING,
 		OVER,
@@ -38,17 +38,18 @@ namespace {
 		int x, y;
 		bool is_open, is_mine, is_flaged;
 		int nr_nbrs;
-		float prob; // probability of mine
+		float prob; // probability of is mine
 	};
 	struct Board {
 		Cell cells[MAX_BOARD_SIZE][MAX_BOARD_SIZE];
 		int width, height;
 		int nr_closed, nr_flagged, nr_mine;
+		int nr_remain_view; // 실제 남은 개수가 아니라 추측되는 개수
 
 		bool isOutside(int x, int y);
 		void clear();
 		void plantMines(int avoidX, int avoidY);
-		void dig(int x, int y); // return true if OVER(is mine or all clear)
+		void dig(int x, int y);
 		void switchFlag(int x, int y);
 
 		void compute1();
@@ -70,8 +71,9 @@ namespace {
 	Adjustable adj;
 	double start_time;
 	double elapsed_time;
-	GameState game_state;
+	UiState game_state;
 	Board board;
+	bool is_game_win = false;
 }
 
 
@@ -108,6 +110,7 @@ void Board::invokeAll(std::function<void(Cell&)> invoke) {
 }
 void Board::plantMines(int avoidX, int avoidY) {
 	nr_closed = width*height;
+	nr_remain_view = nr_mine;
 	nr_flagged = 0;
 
 	for(int cnt=0; cnt<nr_mine; cnt++) {
@@ -133,6 +136,7 @@ void Board::switchFlag(int x, int y) {
 	Cell& cell = cells[y][x];
 	cell.is_flaged = !cell.is_flaged;
 	nr_flagged += cell.is_flaged ? 1 : -1;
+	nr_remain_view = glm::min(board.nr_closed, board.nr_mine-board.nr_flagged);
 }
 void Board::dig(int x, int y) {
 	Cell& cell = cells[y][x];
@@ -140,6 +144,7 @@ void Board::dig(int x, int y) {
 		return;
 	cell.is_open = true;
 	nr_closed--;
+	nr_remain_view = glm::min(board.nr_closed, board.nr_mine-board.nr_flagged);
 	if( cell.is_flaged ) 
 		switchFlag(x,y);
 
@@ -148,9 +153,20 @@ void Board::dig(int x, int y) {
 			dig(c.x, c.y);
 		});
 	}
-	if( cell.is_mine||nr_closed==nr_mine )
-		game_state = GameState::OVER;
-	
+	if( cell.is_mine ) {
+		nr_remain_view = 1;
+		invokeAll([&](Cell& c){
+			if( !c.is_open && !c.is_flaged ) {
+				nr_remain_view++;
+			}
+		});
+		game_state = UiState::OVER;
+		is_game_win = false;
+	}
+	else if( nr_closed==nr_mine ) {
+		game_state = UiState::OVER;
+		is_game_win = true;
+	}
 }
 
 //
@@ -250,7 +266,7 @@ void Board::compute2() {
 
 
 static void setNewGame() {
-	game_state = GameState::NEW;
+	game_state = UiState::NEW;
 	elapsed_time = 0.0;
 	board.clear();
 	board.width = adj.width;
@@ -351,11 +367,11 @@ void AppMineSweeper::updateImGui()
 			}
 		}
 		else { // closed
-			if( isHovered || (game_state == GameState::OVER && cell.is_mine) ) {
+			if( isHovered || (game_state == UiState::OVER && cell.is_mine) ) {
 				col.Value.w = 0.3f;
 			}
 			drawList->AddRectFilled(tlPos, brPos, col, rounding);
-			if( game_state == GameState::OVER ) {
+			if( game_state == UiState::OVER ) {
 				if( !cell.is_flaged && !cell.is_mine)
 					return;
 			}
@@ -374,11 +390,11 @@ void AppMineSweeper::updateImGui()
 		if( cell.is_flaged ) {
 			fontSize *= 0.8f;
 			txPos.x -= fontSize*0.21f;
-			col = boardColors[(game_state==GameState::OVER&&cell.is_mine)?COL_FLAG_RIGHT_IDX:COL_FLAG_WRONG_IDX];
+			col = boardColors[(game_state==UiState::OVER&&cell.is_mine)?COL_FLAG_RIGHT_IDX:COL_FLAG_WRONG_IDX];
 			txPtr = u8"\uE800";
 		} 
 		else if( cell.is_mine ) {
-			if( game_state == GameState::PLAYING && !cell.is_open )
+			if( game_state == UiState::PLAYING && !cell.is_open )
 				return;
 			fontSize *= 0.8f;
 			txPos.x -= fontSize*0.16f;
@@ -401,10 +417,10 @@ void AppMineSweeper::updateImGui()
 	//
 	//	Board Input
 	//
-	if( game_state!=GameState::OVER && isBoardHovered && !board.isOutside(hoveredX, hoveredY)) {
+	if( game_state!=UiState::OVER && isBoardHovered && !board.isOutside(hoveredX, hoveredY)) {
 		if( ImGui::IsMouseReleased(0) ) {
-			if( game_state == GameState::NEW ) {
-				game_state = GameState::PLAYING;
+			if( game_state == UiState::NEW ) {
+				game_state = UiState::PLAYING;
 				start_time = ImGui::GetTime();
 				board.plantMines(hoveredX, hoveredY);
 			}
@@ -420,40 +436,51 @@ void AppMineSweeper::updateImGui()
 	//
 	//	State
 	//
-	if( game_state != GameState::NEW ) {
+	if( game_state != UiState::NEW ) {
 		ImGui::Begin("state##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 
-		if( game_state == GameState::PLAYING ) {
+		if( game_state == UiState::PLAYING ) {
 			elapsed_time = ImGui::GetTime() - start_time;
 		}
 		int eSec = (int)elapsed_time;
 		ImGui::AlignTextToFramePadding();
-		if( game_state==GameState::OVER ) {
-			ImGui::Text(( board.nr_closed == board.nr_mine )?u8"클리어!":u8"게임오버");
+		if( game_state==UiState::OVER ) {
+			ImGui::TextUnformatted(( is_game_win )?u8"클리어!":u8"게임오버");
 			ImGui::SameLine(0.f,20.f);
 		}
 		ImGui::Text(u8"\uE803 %d:%02d", eSec/60, eSec%60);
 		ImGui::SetItemTooltip("%.3f sec", elapsed_time);
 
 		ImGui::SameLine();
-		int remainMines = glm::min(board.nr_closed, board.nr_mine-board.nr_flagged);
-		ImGui::Text(u8"\uE802 %2d/%d", remainMines, board.nr_mine);
-		if( game_state != GameState::NEW ) {
-			ImGui::SameLine();
-			if( ImGui::Button(u8"\uE810 다시시작") ) {
-				setNewGame();
-			}
-			if( game_state == GameState::PLAYING ) {
+		ImGui::Text(u8"\uE802 %2d/%d", board.nr_remain_view, board.nr_mine);
+		if( game_state != UiState::NEW ) {
+			if( game_state == UiState::PLAYING ) {
 				ImGui::SameLine();
 				if( ImGui::Button("자동1") ) {
 					board.compute1();
+				}
+				if( ImGui::BeginItemTooltip() ) {
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 15.0f);
+					ImGui::TextUnformatted("열린칸마다 주변 지뢰개수와 깃발개수를 비교해서 주변 닫힌칸을 모두 열거나 깃발을 세운다. 정확성 보장됨.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
 				}
 				ImGui::SameLine();
 				if( ImGui::Button("자동2") ) {
 					board.compute2();
 				}
+				if( ImGui::BeginItemTooltip() ) {
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 15.0f);
+					ImGui::TextUnformatted("열린칸마다 닫힌칸에 지뢰일 확률을 더하고 가장 높은 확률의 닫힌칸 하나를 열거나 깃발을 세운다. 정확성 보장되지 않음.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
 			} 
+			ImGui::SameLine();
+			if (ImGui::Button(u8"\uE810 다시시작")) {
+				setNewGame();
+			}
 		}
 		ImGui::PopFont();
 		ImGui::End();
@@ -467,7 +494,7 @@ void AppMineSweeper::updateImGui()
 	static const char* levelStrs[4] = {u8"초급", u8"중급", u8"고급", u8"커스텀"};
 	static int level = 0;
 	static bool isAdjChanged = false;
-	if( game_state == GameState::NEW ) {
+	if( game_state == UiState::NEW ) {
 		ImGui::Begin("settings##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 		ImGui::SetNextItemWidth(100.f);
@@ -499,10 +526,7 @@ void AppMineSweeper::updateImGui()
 		}
 		ImGui::SameLine(0.f, 20.f);
 		ImGui::Text("%d in ( %d x %d )", adj.nr_mine, adj.width, adj.height);
-		if( ImGui::BeginItemTooltip() ) {
-			ImGui::Text("%d%%", int(adj.nr_mine/float(adj.width*adj.height)*100));
-			ImGui::EndTooltip();
-		}
+		ImGui::SetItemTooltip("%d%%", int(adj.nr_mine/float(adj.width*adj.height)*100));
 
 		ImGui::SameLine(0.f, 20.f);
 		ImGui::TextDisabled("(?)");
