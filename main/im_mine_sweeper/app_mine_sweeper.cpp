@@ -134,6 +134,8 @@ void Board::switchFlag(int x, int y) {
 	if( isOutside(x, y) )
 		return;
 	Cell& cell = cells[y][x];
+	if( cell.is_open )
+		return;
 	cell.is_flaged = !cell.is_flaged;
 	nr_flagged += cell.is_flaged ? 1 : -1;
 	nr_remain_view = glm::min(board.nr_closed, board.nr_mine-board.nr_flagged);
@@ -425,7 +427,7 @@ void AppMineSweeper::updateImGui()
 				board.plantMines(hoveredX, hoveredY);
 			}
 			board.dig(hoveredX, hoveredY);
-		} else if( ImGui::IsMouseReleased(1) ) {
+		} else if( ImGui::IsMouseReleased(1) && game_state==UiState::PLAYING ) {
 			board.switchFlag(hoveredX, hoveredY);
 		}
 	}
