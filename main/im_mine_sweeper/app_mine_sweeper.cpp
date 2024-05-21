@@ -12,6 +12,7 @@
 #include <glm/gtc/random.hpp>
 #include <functional>
 #include <set>
+#include "locale.h"
 
 
 using namespace glm;
@@ -21,6 +22,7 @@ namespace {
 	constexpr int MAX_BOARD_SIZE = 40;
 	constexpr int TOP_WINDOW_HEIGHT = 100;
 	constexpr int NINE_BOARD_WINDOW_SIZE = 380;
+	constexpr float MINI_FONT_SIZE = 16.f;
 	constexpr float UI_FONT_SIZE = 20.f;
 	constexpr float CELL_FONT_SIZE = 30.f;
 		
@@ -279,10 +281,13 @@ static void setNewGame() {
 AppMineSweeper::AppMineSweeper() 
 	: AppBase(NINE_BOARD_WINDOW_SIZE, NINE_BOARD_WINDOW_SIZE+TOP_WINDOW_HEIGHT, APP_NAME)
 {
+	lang::set(lang::LC_KOR);
+	glfwSetWindowTitle(window, lang::title);
+
 	ImGuiIO& io = ImGui::GetIO();
 	const char* fontPath = "assets/fonts/SpoqaHanSansNeo-Medium.ttf";
 	const char* iconPath = "assets/fonts/fontello.ttf";
-	io.Fonts->AddFontFromFileTTF(fontPath, 16.f, nullptr, io.Fonts->GetGlyphRangesKorean());
+	io.Fonts->AddFontFromFileTTF(fontPath, MINI_FONT_SIZE, nullptr, io.Fonts->GetGlyphRangesKorean());
 	
 	ImFontConfig config;
     // config.GlyphMinAdvanceX = 13.0f;
@@ -335,10 +340,9 @@ void AppMineSweeper::updateImGui()
 		ImColor::HSV(0.67f,0.85f,1.f), // 11 flag wrong
 
 	};
-
 	ImGui::SetNextWindowSize({NINE_BOARD_WINDOW_SIZE, NINE_BOARD_WINDOW_SIZE}, ImGuiCond_Once);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{4, 4});
-	ImGui::Begin("board##mine");
+	ImGui::Begin(lang::board);
 	const bool isBoardHovered = ImGui::IsWindowHovered();
 	const float paddingRadio = 0.06f;
 	const vec2 contentSize = toGlm(ImGui::GetContentRegionAvail());
@@ -439,7 +443,7 @@ void AppMineSweeper::updateImGui()
 	//	State
 	//
 	if( game_state != UiState::NEW ) {
-		ImGui::Begin("state##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::Begin(lang::state, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 
 		if( game_state == UiState::PLAYING ) {
@@ -448,39 +452,39 @@ void AppMineSweeper::updateImGui()
 		int eSec = (int)elapsed_time;
 		ImGui::AlignTextToFramePadding();
 		if( game_state==UiState::OVER ) {
-			ImGui::TextUnformatted(( is_game_win )?u8"클리어!":u8"게임오버");
+			ImGui::TextUnformatted(( is_game_win )?lang::clear:lang::over);
 			ImGui::SameLine(0.f,20.f);
 		}
-		ImGui::Text(u8"\uE803 %d:%02d", eSec/60, eSec%60);
-		ImGui::SetItemTooltip("%.3f sec", elapsed_time);
+		ImGui::Text("\uE803 %d:%02d", eSec/60, eSec%60);
+		ImGui::SetItemTooltip(lang::sec_count, elapsed_time);
 
 		ImGui::SameLine();
-		ImGui::Text(u8"\uE802 %2d/%d", board.nr_remain_view, board.nr_mine);
+		ImGui::Text("\uE802 %2d/%d", board.nr_remain_view, board.nr_mine);
 		if( game_state != UiState::NEW ) {
 			if( game_state == UiState::PLAYING ) {
 				ImGui::SameLine();
-				if( ImGui::Button("자동1") ) {
+				if( ImGui::Button(lang::auto_btn1) ) {
 					board.compute1();
 				}
 				if( ImGui::BeginItemTooltip() ) {
 					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 15.0f);
-					ImGui::TextUnformatted("열린칸마다 주변 지뢰개수와 깃발개수를 비교해서 주변 닫힌칸을 모두 열거나 깃발을 세운다. 정확성 보장됨.");
+					ImGui::TextUnformatted(lang::auto_btn1_disc);
 					ImGui::PopTextWrapPos();
 					ImGui::EndTooltip();
 				}
 				ImGui::SameLine();
-				if( ImGui::Button("자동2") ) {
+				if( ImGui::Button(lang::auto_btn2) ) {
 					board.compute2();
 				}
 				if( ImGui::BeginItemTooltip() ) {
 					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 15.0f);
-					ImGui::TextUnformatted("열린칸마다 닫힌칸에 지뢰일 확률을 더하고 가장 높은 확률의 닫힌칸 하나를 열거나 깃발을 세운다. 정확성 보장되지 않음.");
+					ImGui::TextUnformatted(lang::auto_btn2_disc);
 					ImGui::PopTextWrapPos();
 					ImGui::EndTooltip();
 				}
 			} 
 			ImGui::SameLine();
-			if (ImGui::Button(u8"\uE810 다시시작")) {
+			if (ImGui::Button(lang::retry)) {
 				setNewGame();
 			}
 		}
@@ -493,14 +497,13 @@ void AppMineSweeper::updateImGui()
 	//
 	//	Settings
 	//
-	static const char* levelStrs[4] = {u8"초급", u8"중급", u8"고급", u8"커스텀"};
 	static int level = 0;
 	static bool isAdjChanged = false;
 	if( game_state == UiState::NEW ) {
-		ImGui::Begin("settings##mine", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::Begin(lang::setting, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::PushFont(ui_font);
 		ImGui::SetNextItemWidth(100.f);
-		if( ImGui::Combo("Level", &level, levelStrs, 4) ) {
+		if( ImGui::Combo(lang::level, &level, lang::levels, 4) ) {
 			isAdjChanged = true;
 			switch( level ) {
 			case 0:
@@ -532,11 +535,24 @@ void AppMineSweeper::updateImGui()
 
 		ImGui::SameLine(0.f, 20.f);
 		ImGui::TextDisabled("(?)");
-		ImGui::SetItemTooltip("좌클릭: 열기, 우클릭: 깃발.\n하나 열어서 시작.");
+		if( ImGui::BeginPopupContextItem() ) {
+			static int cur_locale = 0;
+			ImGui::PushItemWidth(100.f);
+			if(ImGui::Combo(lang::locale, &cur_locale, lang::locale_strs)) {
+				lang::set((lang::LOCALE)cur_locale);
+			}
+			ImGui::PopItemWidth();
+		} else if( ImGui::BeginItemTooltip() ) {
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 15.0f);
+			ImGui::TextUnformatted(lang::game_disc);
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
+
 		if(level>1) {
 			ImGui::SameLine(0.f, 20.f);
-			ImGui::TextDisabled("플레이해 주셔서 감사합니다.");
-			ImGui::SetItemTooltip("프로그래머: 임동예 ( imdongye@naver.com )");
+			ImGui::TextDisabled(lang::thanks);
+			ImGui::SetItemTooltip(lang::programmer);
 		}
 
 		static const float minMineRatio = 0.12f;
