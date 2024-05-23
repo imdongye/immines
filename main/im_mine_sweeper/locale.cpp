@@ -18,6 +18,7 @@ namespace lang {
     const char* setting;
     const char* board;
     const char* state;
+    const char* sec_count;
 }
 
 void lang::set(LOCALE id) {
@@ -38,7 +39,7 @@ void lang::set(LOCALE id) {
         level           = "레벨";
         thanks          = "플레이해 주셔서 감사합니다.";
         programmer      = "프로그래머: 임동예 ( imdongye@naver.com )";
-        setting         = "설정창##mines";
+        setting         = "설정##mines";
         board           = "지뢰밭##mines";
         state           = "게임중##mines";
         sec_count       = "%.3f 초";

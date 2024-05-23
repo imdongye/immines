@@ -2,7 +2,7 @@
 	Todo:
 	1. 맵정보 내보내기 불러오기
 	2. 나무위키 규칙보고 compute업그레이드
-
+	3. high dip From: https://github.com/ocornut/imgui/issues/1065
 
 */
 #include "app_mine_sweeper.h"
@@ -304,6 +304,7 @@ AppMineSweeper::AppMineSweeper()
 }
 AppMineSweeper::~AppMineSweeper()
 {
+    log::exportToFile();
 }
 void AppMineSweeper::update() 
 {

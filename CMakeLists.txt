@@ -191,13 +191,16 @@ endif()
 ### main proj ###
 set(exe_name "immines")
 set(main_dir "${CMAKE_SOURCE_DIR}/main")
-file(GLOB_RECURSE main_files CONFIGURE_DEPENDS "${main_dir}/*.*")
-list(FILTER main_files EXCLUDE REGEX "${main_dir}/assets/fonts/*")
-list(FILTER main_files EXCLUDE REGEX "${main_dir}/assets/models/*")
-list(FILTER main_files EXCLUDE REGEX "${main_dir}/assets/images/*")
-list(FILTER main_files EXCLUDE REGEX "${main_dir}/ignored/*")
-list(FILTER main_files EXCLUDE REGEX "${main_dir}/exports/*")
-add_executable(${exe_name} ${main_files})
+file(GLOB_RECURSE main_files   CONFIGURE_DEPENDS 
+    ${main_dir}/*.c ${main_dir}/*.cpp ${main_dir}/*.h ${main_dir}/*.hpp ${main_dir}/*.ipp
+)
+file(GLOB_RECURSE shader_files CONFIGURE_DEPENDS 
+    ${main_dir}/*.glsl ${main_dir}/*.vs ${main_dir}/*.vert ${main_dir}/*.fs ${main_dir}/*.frag
+)
+list(FILTER main_files   EXCLUDE REGEX "${main_dir}/ignored/*")
+list(FILTER shader_files EXCLUDE REGEX "${main_dir}/ignored/*")
+
+add_executable(${exe_name} WIN32 MACOSX_BUNDLE ${main_files} ${shader_files})
 if(WIN32)
     set_target_properties(${exe_name} PROPERTIES 
         LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
@@ -260,27 +263,91 @@ endif()
 
 ### CPack ###
 # From: https://cmake.org/cmake/help/book/mastering-cmake/chapter/Packaging%20With%20CPack.html
-install(TARGETS ${exe_name} DESTINATION .)
-install(DIRECTORY ${main_dir}/assets/ DESTINATION ./assets) #FILES_MATCHING PATTERN "*.dae"  PATTERN "*.jpg")
-install(FILES ${main_dir}/imgui.ini DESTINATION ./) #FILES_MATCHING PATTERN "*.dae"  PATTERN "*.jpg")
-set(CPACK_NSIS_DISPLAY_NAME "immines")
-set(CPACK_NSIS_PACKAGE_NAME "immines")
-set(CPACK_NSIS_MODIFY_PATH ON)
-set(CPACK_NSIS_MANIFEST_DPI_AWARE true)
-set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL YES)
-set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/imdongye/immines")
-set(CPACK_NSIS_HELP_LINK "http://imdongye.duckdns.org/")
-set(CPACK_NSIS_CONTACT "imdongye@naver.com")
+# And : https://martin-fieber.de/blog/cmake-cpack-cross-platform-distributables/#windows-application-bundle
+install(TARGETS ${exe_name} 
+    BUNDLE  DESTINATION .
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
-set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
-set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
-set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
-# From: https://stackoverflow.com/questions/2640760/creating-windows-desktop-icon-in-cmake-cpack-nsis
-list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$DESKTOP\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
-list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$DESKTOP\\\\${CMAKE_PROJECT_NAME}.lnk'")
+set(CPACK_VERBATIM_VARIABLES YES)
+set(CPACK_PACKAGE_VENDOR "idy soft")
+set(CPACK_PACKAGE_DIRECTORY distribution)
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "iimmm-${CMAKE_PROJECT_VERSION}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
-list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
-list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\${CMAKE_PROJECT_NAME}.lnk'")
+if(WIN32)
+    install(DIRECTORY ${main_dir}/assets/fonts DESTINATION ./assets/fonts)
+    install(FILES ${main_dir}/imgui.ini DESTINATION ./)
+
+    target_sources(${exe_name} PUBLIC
+        main/assets/manifests/main.rc
+        main/assets/manifests/app.menifest
+    )
+    set(CPACK_NSIS_DISPLAY_NAME "immines")
+    set(CPACK_NSIS_PACKAGE_NAME "immines")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+    set(CPACK_NSIS_MANIFEST_DPI_AWARE true)
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL YES)
+    set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/imdongye/immines")
+    set(CPACK_NSIS_HELP_LINK "http://imdongye.duckdns.org/")
+    set(CPACK_NSIS_CONTACT "imdongye@naver.com")
+
+    set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
+    set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
+    set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/main\\\\assets\\\\icons\\\\icon.ico")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/License.txt")
+    # From: https://stackoverflow.com/questions/2640760/creating-windows-desktop-icon-in-cmake-cpack-nsis
+    list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$DESKTOP\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
+    # list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$DESKTOP\\\\${CMAKE_PROJECT_NAME}.lnk'")
+
+    list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
+    # list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\${CMAKE_PROJECT_NAME}.lnk'")
+
+
+
+elseif(APPLE)
+    set(mac_bundle_resource 
+        "main/assets/icons/icon.icns"
+        "main/imgui.ini"
+        "main/assets/fonts/fontello.ttf"
+        "main/assets/fonts/SpoqaHanSansNeo-Medium.ttf"
+    )
+    target_sources(${exe_name} PUBLIC
+        ${mac_bundle_resource}
+        "main/assets/manifests/Info.plist"
+    )
+    # icon
+    set_source_files_properties("main/assets/icons/icon.icns"
+        PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources"
+    )
+    # imgui.ini
+    set_source_files_properties("main/imgui.ini"
+        PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources"
+    )
+    # fonts
+    set_source_files_properties("main/assets/fonts/fontello.ttf"
+        PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources/assets/fonts"
+    )
+    set_source_files_properties("main/assets/fonts/SpoqaHanSansNeo-Medium.ttf"
+        PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources/assets/fonts"
+    )
+
+    set_target_properties(${exe_name} PROPERTIES
+        # INSTALL_RPATH @executable_path/../Frameworks
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/main/assets/manifests/Info.plist"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${BUILD_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.idysoft.immines"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.idysoft.immines"
+        MACOSX_BUNDLE_COPYRIGHT "(c) 2024 idy soft. All rights reserved."    
+    )
+    set(CPACK_GENERATOR "ZIP")
+endif()
 
 include(CPack)
