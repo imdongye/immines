@@ -262,13 +262,6 @@ endif()
 ### CPack ###
 # From: https://cmake.org/cmake/help/book/mastering-cmake/chapter/Packaging%20With%20CPack.html
 # And : https://martin-fieber.de/blog/cmake-cpack-cross-platform-distributables/#windows-application-bundle
-install(TARGETS ${exe_name} 
-    BUNDLE  DESTINATION .
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-
 set(CPACK_VERBATIM_VARIABLES YES)
 set(CPACK_PACKAGE_VENDOR "idy soft")
 set(CPACK_PACKAGE_DIRECTORY distribution)
@@ -276,14 +269,13 @@ set(CPACK_SOURCE_PACKAGE_FILE_NAME "iimmm-${CMAKE_PROJECT_VERSION}")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
 if(WIN32)
-    set(CMAKE_GENERATOR "Visual Studio 17 2022")
-
-    install(DIRECTORY ${main_dir}/assets/fonts DESTINATION ./assets/fonts)
+    install(TARGETS ${exe_name} DESTINATION .)
+    install(DIRECTORY ${main_dir}/assets/ DESTINATION ./assets)
     install(FILES ${main_dir}/imgui.ini DESTINATION ./)
 
     target_sources(${exe_name} PUBLIC
         main/assets/manifests/main.rc
-        main/assets/manifests/app.menifest
+        main/assets/manifests/app.manifest
     )
     set(CPACK_NSIS_DISPLAY_NAME "immines")
     set(CPACK_NSIS_PACKAGE_NAME "immines")
@@ -300,15 +292,20 @@ if(WIN32)
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/License.txt")
     # From: https://stackoverflow.com/questions/2640760/creating-windows-desktop-icon-in-cmake-cpack-nsis
     list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$DESKTOP\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
-    # list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$DESKTOP\\\\${CMAKE_PROJECT_NAME}.lnk'")
+    list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$DESKTOP\\\\${CMAKE_PROJECT_NAME}.lnk'")
 
     list(APPEND CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\아임마인즈.lnk' '$INSTDIR\\\\immines.exe'")
-    # list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\${CMAKE_PROJECT_NAME}.lnk'")
+    list(APPEND CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\${CMAKE_PROJECT_NAME}.lnk'")
 
 
 
 elseif(APPLE)
-    # set(CMAKE_GENERATOR "XCode")
+    install(TARGETS ${exe_name} 
+        BUNDLE  DESTINATION .
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
 
     set(mac_bundle_resource
         "main/assets/manifests/Info.plist"
