@@ -1,6 +1,4 @@
 {
-    "cmake.generator": "Xcode",
-
     "cmake.debugConfig": {
         "cwd": "${workspaceFolder}/main",
         "console": "integratedTerminal",

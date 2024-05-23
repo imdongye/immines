@@ -2,18 +2,16 @@
   
 2023-07-09 / imdongye
 
-cmake -B build . -G [XCode, Ninja ...]
+cmake -B build . -G [Xcode, Ninja, Visual Studio 17 2022 ...]
 cmake --build build --config Debug
+or
+setting in vscode cmake extention
 
 실행경로는 main 폴더, assets폴더를 사용했다면 실행파일을 배포할때 assets 폴더도 같이 배포해야한다.
 assimp, glfw 의 BUILD_SHARED_LIBS 옵션을 삭제하고 현재 스코프의 BUILD_SHARED_LIBS를 참조하게 한다.
 
 Note:
 * target_link_libraries로 연결한 cmake 라이브러리(.lib나 .a를 생략해도 됨)는 target_include_directories 로 헤더 경로를 입력 안해줘도 자동으로 된다.
-
-Todo:
-1. add_lib( OBJECT로 정적라이브러리 생상하지 않고 오브젝트로 실행파일 생성하기
-2. 다수의 add_exe.. 골라 실행 시스템
 
 ]==]
 
@@ -27,7 +25,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLIM_DEBUG")
 set(CMAKE_VERBOSE_MAKEFILE true)
 if(WIN32)
     set(CMAKE_GENERATOR_PLATFORM x64)
-endif(WIN32)
+endif()
 
 project(
     immines
@@ -278,6 +276,8 @@ set(CPACK_SOURCE_PACKAGE_FILE_NAME "iimmm-${CMAKE_PROJECT_VERSION}")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
 if(WIN32)
+    set(CMAKE_GENERATOR "Visual Studio 17 2022")
+
     install(DIRECTORY ${main_dir}/assets/fonts DESTINATION ./assets/fonts)
     install(FILES ${main_dir}/imgui.ini DESTINATION ./)
 
@@ -308,7 +308,10 @@ if(WIN32)
 
 
 elseif(APPLE)
-    set(mac_bundle_resource 
+    # set(CMAKE_GENERATOR "XCode")
+
+    set(mac_bundle_resource
+        "main/assets/manifests/Info.plist"
         "main/assets/icons/icon.icns"
         "main/imgui.ini"
         "main/assets/fonts/fontello.ttf"
@@ -316,8 +319,8 @@ elseif(APPLE)
     )
     target_sources(${exe_name} PUBLIC
         ${mac_bundle_resource}
-        "main/assets/manifests/Info.plist"
     )
+    source_group(TREE "${CMAKE_SOURCE_DIR}/main" FILES ${mac_bundle_resource})
     # icon
     set_source_files_properties("main/assets/icons/icon.icns"
         PROPERTIES
@@ -347,6 +350,9 @@ elseif(APPLE)
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.idysoft.immines"
         MACOSX_BUNDLE_COPYRIGHT "(c) 2024 idy soft. All rights reserved."    
     )
+    set(XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "7T6AP7F7YU")
+    set(XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development")
+    set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual")
     set(CPACK_GENERATOR "ZIP")
 endif()
 

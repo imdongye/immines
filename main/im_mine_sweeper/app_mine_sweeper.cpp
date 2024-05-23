@@ -536,13 +536,14 @@ void AppMineSweeper::updateImGui()
 
 		ImGui::SameLine(0.f, 20.f);
 		ImGui::TextDisabled("(?)");
-		if( ImGui::BeginPopupContextItem() ) {
+		if( ImGui::BeginPopupContextItem("context") ) {
 			static int cur_locale = 0;
 			ImGui::PushItemWidth(100.f);
 			if(ImGui::Combo(lang::locale, &cur_locale, lang::locale_strs)) {
 				lang::set((lang::LOCALE)cur_locale);
 			}
 			ImGui::PopItemWidth();
+            ImGui::EndPopup();
 		} else if( ImGui::BeginItemTooltip() ) {
 			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 15.0f);
 			ImGui::TextUnformatted(lang::game_disc);
